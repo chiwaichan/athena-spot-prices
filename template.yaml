@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template to deploy a solution to retrieve and present electricity spot prices in an Athena table.
+
+Resources:  
+  GetElectricityPricesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get_electricity_prices/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(*/15 * * * ? *)
+            Description: Check and save the prices every 15 minutes
+            Enabled: True
