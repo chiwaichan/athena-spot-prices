@@ -9,10 +9,57 @@ Resources:
       CodeUri: functions/get_electricity_prices/
       Handler: app.lambda_handler
       Runtime: python3.8
+      Role: !GetAtt GetElectricityPricesExecutionRole.Arn
+      Environment:
+        Variables:
+          PricesElectrictyInfoS3Bucket: !Ref PricesElectrictyInfoS3Bucket
       Events:
         ScheduledEvent:
           Type: Schedule
           Properties:
-            Schedule: cron(*/15 * * * ? *)
+            Schedule: cron(*/30 * * * ? *)
             Description: Check and save the prices every 15 minutes
             Enabled: True
+
+  GetElectricityPricesExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: logging
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      - PolicyName: s3
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            Resource:  
+              Fn::Join:  
+                - ""  
+                -  
+                  - "arn:aws:s3:::"  
+                  -  
+                    Ref: "PricesElectrictyInfoS3Bucket"  
+                  - "/*"
+
+  PricesElectrictyInfoS3Bucket:
+    Type: AWS::S3::Bucket
