@@ -2,14 +2,20 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: SAM Template to deploy a solution to retrieve and present electricity spot prices in an Athena table.
 
+Parameters: 
+  FlickElectricSecretName: 
+    Type: String
+    Default: flick-electric-credentials-jYYIZv
+
 Resources:  
-  GetElectricityPricesFunction:
+  GetElectricityInfoPricesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/get_electricity_prices/
+      CodeUri: functions/get_electricity_info_prices/
       Handler: app.lambda_handler
       Runtime: python3.8
-      Role: !GetAtt GetElectricityPricesExecutionRole.Arn
+      Timeout: 15
+      Role: !GetAtt GetElectricityInfoPricesExecutionRole.Arn
       Environment:
         Variables:
           PricesElectrictyInfoS3Bucket: !Ref PricesElectrictyInfoS3Bucket
@@ -21,7 +27,26 @@ Resources:
             Description: Check and save the prices every 15 minutes
             Enabled: True
 
-  GetElectricityPricesExecutionRole:
+  GetFlickElectricPricesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/get_flick_electric_prices/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Timeout: 15
+      Role: !GetAtt GetFlickElectricPricesExecutionRole.Arn
+      Environment:
+        Variables:
+          PricesFlickElectricS3Bucket: !Ref PricesFlickElectricS3Bucket
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(*/30 * * * ? *)
+            Description: Check and save the prices every 15 minutes
+            Enabled: True
+
+  GetElectricityInfoPricesExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -61,7 +86,63 @@ Resources:
                     Ref: "PricesElectrictyInfoS3Bucket"  
                   - "/*"
 
+  GetFlickElectricPricesExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: SecretsManager
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetResourcePolicy
+            - secretsmanager:GetSecretValue
+            - secretsmanager:DescribeSecret
+            - secretsmanager:ListSecretVersionIds
+            Resource: !Sub
+              - arn:aws:secretsmanager:${Region}:${AccountID}:secret:${SecretName}
+              - {Region: !Ref AWS::Region, AccountID: !Ref AWS::AccountId, SecretName: !Ref FlickElectricSecretName}
+      - PolicyName: Logging
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+      - PolicyName: PricesFlickElectricS3Bucket
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            Resource:  
+              Fn::Join:  
+                - ""  
+                -  
+                  - "arn:aws:s3:::"  
+                  -  
+                    Ref: "PricesFlickElectricS3Bucket"  
+                  - "/*"
+
   PricesElectrictyInfoS3Bucket:
+    Type: AWS::S3::Bucket
+
+  PricesFlickElectricS3Bucket:
     Type: AWS::S3::Bucket
 
   PowerGlueDatabase:
