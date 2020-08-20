@@ -210,3 +210,49 @@ Resources:
               field.delim: ","
             SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
             Parameters: {"paths": "BEN2201,BRB0331,DOB0661,HAY2201,HLY2201,HWB2201,INV2201,ISL2201,OTA2201,SFD2201,STK2201,TUI1101,WKM2201,date_time"}
+
+  PricesFlickElectricGlueTable:
+    DependsOn: PowerGlueDatabase
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref AWS::StackName
+      TableInput:
+        Name: !Ref PricesFlickElectricS3Bucket
+        Description: This table holds the values for power prices from Flick Electric
+        TableType: EXTERNAL_TABLE
+        Parameters: {"classification": "json"}
+        PartitionKeys: []
+        StorageDescriptor:
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          Columns:
+          - Name: date_time
+            Type: string
+          - Name: price
+            Type: double
+          - Name: retailer
+            Type: double
+          - Name: ea
+            Type: double
+          - Name: metering
+            Type: double
+          - Name: generation
+            Type: double
+          - Name: admin
+            Type: double
+          - Name: network
+            Type: double
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          Location:  
+            Fn::Join:  
+              - ""  
+              -  
+                - "s3://"  
+                -  
+                  Ref: "PricesFlickElectricS3Bucket"  
+                - "/"
+          SerdeInfo:
+            Parameters:
+              field.delim: ","
+            SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+            Parameters: {"paths": "date_time,price,retailer,ea,metering,generation,admin,network"}
