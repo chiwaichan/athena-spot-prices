@@ -3,6 +3,7 @@ import os
 import pickle
 import boto3
 import time
+import datetime
 import json
 
 def lambda_handler(event, context):
@@ -18,7 +19,7 @@ def lambda_handler(event, context):
     
     for n in parsed_json['charts']['prices_last_five_mins_map']['data']['nodes']:
         jsonFileData[n['gip_gxp_full']] = n['price']
-        jsonFileData['date_time'] = n['trading_date'] + " " + str(n['market_time'])
+        jsonFileData['date_time'] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
 
     s3 = boto3.resource('s3')
     obj = s3.Object(bucketName, 'electricity-info-' + time.strftime("%Y%m%d%H%M") + '.json')
